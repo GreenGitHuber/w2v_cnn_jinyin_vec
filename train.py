@@ -19,10 +19,12 @@ tf.flags.DEFINE_float("dev_sample_percentage", .1, "Percentage of the training d
 #tf.flags.DEFINE_string("negative_data_file", "./data/rt-polaritydata/rt-polarity.neg", "Data source for the negative data.")
 tf.flags.DEFINE_string("positive_data_file", "./data/ham_100.utf8", "Data source for the positive data.")
 tf.flags.DEFINE_string("negative_data_file", "./data/spam_100.utf8", "Data source for the negative data.")
+tf.flags.DEFINE_string("positive_dev_data_file", "./data/ham_dev_10.utf8", "Data source for evalue the positive data.")
+tf.flags.DEFINE_string("negative_dev_data_file", "./data/spam_dev_10.utf8", "Data source for evalue the negative data.")
 tf.flags.DEFINE_integer("num_labels", 2, "Number of labels for data. (default: 2)")
 
 # Model hyperparameters
-tf.flags.DEFINE_integer("embedding_dim", 400, "Dimensionality of character embedding (default: 128)")
+tf.flags.DEFINE_integer("embedding_dim", 426, "Dimensionality of character embedding (default: 128)")
 tf.flags.DEFINE_string("filter_sizes", "3,4,5", "Comma-spearated filter sizes (default: '3,4,5')")
 tf.flags.DEFINE_integer("num_filters", 128, "Number of filters per filter size (default: 128)")
 tf.flags.DEFINE_float("dropout_keep_prob", 0.5, "Dropout keep probability (default: 0.5)")
@@ -62,12 +64,27 @@ if not os.path.exists(out_dir):
 # Load data
 print("Loading data...")
 x_text, y = data_helpers.load_positive_negative_data_files(FLAGS.positive_data_file, FLAGS.negative_data_file)
+x_dev_text, y_dev = data_helpers.load_positive_negative_dev_data_files(FLAGS.positive_dev_data_file, FLAGS.negative_dev_data_file)
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#获取两个文本最大长度
+input_sentences = x_text + x_dev_text
+sentences = [sentence.split(' ') for sentence in input_sentences]
+max_sentence_length =  max([len(sentence) for sentence in sentences])
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # Get embedding vector
-sentences, max_document_length = data_helpers.padding_sentences(x_text, '<PADDING>')
-x = np.array(word2vec_helpers.embedding_sentences(sentences, embedding_size = FLAGS.embedding_dim, file_to_load="/home/momo/PycharmProjects/zh_cnn_text_classify/data/vectors/wiki.zh.text.model",file_to_save = os.path.join(out_dir, 'trained_word2vec.model')))
-print("x.shape = {}".format(x.shape))
-print("y.shape = {}".format(y.shape))
+#sentences, max_document_length = data_helpers.padding_sentences(x_text, '<PADDING>')padding_sentence_length = None
+train_sentences, max_document_length = data_helpers.padding_sentences(x_text, '<PADDING>',padding_sentence_length = max_sentence_length)
+dev_sentences, max_document_length = data_helpers.padding_sentences(x_dev_text, '<PADDING>',padding_sentence_length = max_sentence_length)
+
+x_train = np.array(word2vec_helpers.embedding_sentences(train_sentences, embedding_size = FLAGS.embedding_dim, file_to_load="/Users/jiangqy/Code/model/wiki.zh.text.model",file_to_save = os.path.join(out_dir, 'trained_word2vec.model')))
+x_dev = np.array(word2vec_helpers.embedding_sentences(dev_sentences, embedding_size = FLAGS.embedding_dim, file_to_load="/Users/jiangqy/Code/model/wiki.zh.text.model",file_to_save = os.path.join(out_dir, 'trained_word2vec.model')))
+print("train_x.shape = {}".format(x_train.shape))
+print("train_y.shape = {}".format(y.shape))
+print("dev_x.shape = {}".format(x_dev.shape))
+print("dev_y.shape = {}".format(y_dev.shape))
 
 # Save params
 training_params_file = os.path.join(out_dir, 'training_params.pickle')
@@ -77,14 +94,19 @@ data_helpers.saveDict(params, training_params_file)
 # Shuffle data randomly
 np.random.seed(10)
 shuffle_indices = np.random.permutation(np.arange(len(y)))
-x_shuffled = x[shuffle_indices]
-y_shuffled = y[shuffle_indices]
+x_train= x_train[shuffle_indices]
+y_train = y[shuffle_indices]
+
+shuffle_indices_dev = np.random.permutation(np.arange(len(y_dev)))
+x_dev= x_dev[shuffle_indices_dev]
+y_dev = y_dev[shuffle_indices_dev]
 
 # Split train/test set
 # TODO: This is very crude, should use cross-validation
-dev_sample_index = -1 * int(FLAGS.dev_sample_percentage * float(len(y)))
-x_train, x_dev = x_shuffled[:dev_sample_index], x_shuffled[dev_sample_index:]
-y_train, y_dev = y_shuffled[:dev_sample_index], y_shuffled[dev_sample_index:]
+# dev_sample_index = -1 * int(FLAGS.dev_sample_percentage * float(len(y)))
+# x_train, x_dev = x_train_shuffled[:dev_sample_index], x_shuffled[dev_sample_index:]
+# y_train, y_dev = y_shuffled[:dev_sample_index], y_shuffled[dev_sample_index:]
+
 print("Train/Dev split: {:d}/{:d}".format(len(y_train), len(y_dev)))
 
 # Training

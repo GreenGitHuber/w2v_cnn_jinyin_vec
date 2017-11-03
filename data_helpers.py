@@ -5,11 +5,35 @@ import re
 import itertools
 from collections import Counter
 import os
-import word2vec_helpers
+# import word2vec_helpers
 import time
 import pickle
 import codecs
 import jieba
+from pinyin import PinYin
+
+def word_to_pinyin(word):
+    test = PinYin()
+    test.load_word()
+    word_py = test.hanzi2pinyin_split(string=word,split="")
+    return word_py
+
+#将拼音转化为向量
+#并且对于预处理当中没有过滤的字母赋予零向量
+def word_to_vec(word):
+    string = word_to_pinyin(word)
+    vec = [0]*26
+    for char in string:
+        if char.isalpha():
+            loc = ord(char)- ord('a')
+            if loc not in range(0,26):
+                vec = [0 for i in range(26)]
+                return vec
+            if vec[loc]==1:
+                vec[loc] +=1
+            else:
+                vec[loc] = 1
+    return vec
 
 def load_data_and_labels(input_text_file, input_label_file, num_labels):
     x_text = read_and_clean_zh_file(input_text_file)
@@ -31,6 +55,27 @@ def load_positive_negative_data_files(positive_data_file, negative_data_file):
     negative_labels = [[1, 0] for _ in negative_examples]
     y = np.concatenate([positive_labels, negative_labels], 0)
     return [x_text, y]
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#这个是训练集
+
+def load_positive_negative_dev_data_files(positive_dev_data_file, negative_dev_data_file):
+    """
+    Loads MR polarity data from files, splits the data into words and generates labels.
+    Returns split sentences and labels.
+    """
+    # Load data from files
+    positive_examples = read_and_clean_zh_file(positive_dev_data_file, "pos_dev_out.txt")
+    negative_examples = read_and_clean_zh_file(negative_dev_data_file, "neg_dev_out.txt")
+    # Combine data
+    x_text = positive_examples + negative_examples
+    # Generate labels
+    positive_labels = [[0, 1] for _ in positive_examples]
+    negative_labels = [[1, 0] for _ in negative_examples]
+    y = np.concatenate([positive_labels, negative_labels], 0)
+    return [x_text, y]
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def padding_sentences(input_sentences, padding_token, padding_sentence_length = None):
     sentences = [sentence.split(' ') for sentence in input_sentences]
@@ -80,8 +125,11 @@ def mkdir_if_not_exist(dirpath):
 
 
 def seperate_line(line):
+    #当训练词向量就加上这几句话
     word_list = jieba.lcut(line)
     return ''.join([word + ' ' for word in word_list])
+    #训练字向量
+    #return ''.join([word + ' ' for word in line])
 
 def read_and_clean_zh_file(input_file, output_cleaned_file = None):
     lines = list(open(input_file, "r").readlines())
@@ -97,6 +145,7 @@ def clean_str(string):
     Tokenization/string cleaning for all datasets except for SST.
     Original taken from https://github.com/yoonkim/CNN_sentence/blob/master/process_data.py
     """
+    #这句话：是只保留中文汉字
     string = re.sub(r"[^\u4e00-\u9fff]", " ", string)
     #string = re.sub(r"[^A-Za-z0-9(),!?\'\`]", " ", string)
     #string = re.sub(r"\'s", " \'s", string)

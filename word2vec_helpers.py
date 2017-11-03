@@ -11,6 +11,8 @@ import logging
 import multiprocessing
 import time
 import json
+import data_helpers
+import numpy as np
  
 from gensim.models import Word2Vec
 from gensim.models.word2vec import LineSentence
@@ -32,16 +34,44 @@ def embedding_sentences(sentences, embedding_size = 128, window = 5, min_count =
     print("vector size:", embeddingDim)
 
     embeddingUnknown = [0 for i in range(embeddingDim)]
+    #原代码
+    # for sentence in sentences:
+    #     this_vector = []
+    #     for word in sentence:
+    #         if word in w2vModel.wv.vocab:
+    #             this_vector.append(w2vModel[word])
+    #         else:
+    #             this_vector.append(embeddingUnknown)
+    #     all_vectors.append(this_vector)
+    # return all_vectors
+#+++++++++++++++++++++++++++++++++++++++++++++++++
+#加拼音向量
+    test_times=0
     for sentence in sentences:
+        
+        print (test_times ,'   ',len(sentences))
+        test_times=test_times+1
+
         this_vector = []
         for word in sentence:
             if word in w2vModel.wv.vocab:
-                this_vector.append(w2vModel[word])
+                #print (word)
+                zh_vec = w2vModel[word]
+                py_vec = data_helpers.word_to_vec(word)
+                merge_vec = np.concatenate((zh_vec,py_vec))
+                this_vector.append(merge_vec)
             else:
-                this_vector.append(embeddingUnknown)
+                #print (word)
+                zh_vec = embeddingUnknown
+                py_vec = data_helpers.word_to_vec(word)
+                merge_vec = np.concatenate((zh_vec,py_vec))
+                this_vector.append(merge_vec)               
         all_vectors.append(this_vector)
+    print("over!!!!!")
     return all_vectors
 
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def generate_word2vec_files(input_file, output_model_file, output_vector_file, size = 128, window = 5, min_count = 5):
     start_time = time.time()
