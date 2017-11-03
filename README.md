@@ -3,9 +3,15 @@
 ## 简介
 参考[IMPLEMENTING A CNN FOR TEXT CLASSIFICATION IN TENSORFLOW](http://www.wildml.com/2015/12/implementing-a-cnn-for-text-classification-in-tensorflow/)实现的一个简单的卷积神经网络，用于中文文本分类任务（此项目使用的数据集是中文垃圾邮件识别任务的数据集），数据集下载地址：[百度网盘](https://pan.baidu.com/s/1i4HaYTB)
 
+
 ## 区别
 原博客实现的cnn用于英文文本分类，没有使用word2vec来获取单词的向量表达，而是在网络中添加了embedding层来来获取向量。<br/>
 而此项目则是利用word2vec先获取中文测试数据集中各个<strong>字</strong>的向量表达，再输入卷积网络进行分类。
+
+1、添加了汉字拼音这一特征
+2、原来的项目利用的是字向量，这里改为了词向量
+3、采用结巴分词进行分词
+
 
 ## 运行方法
 
